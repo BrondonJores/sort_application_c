@@ -1,0 +1,26 @@
+/* include/analysis.h*/
+
+#ifndef ANALYSIS_H
+    #define ANALYSIS_H
+    #include <stddef.h>
+    #include "benchmark.h"
+
+    typedef struct 
+    {
+        SortAlgorithm algorithm;
+        size_t array_size;
+        DataDistribution distribution;
+        SortOrder order;
+        size_t sample_count;
+        double average_execution_time;
+        double average_comparisons;
+        double average_swaps;
+        double average_auxiliary_memory;
+        double min_execution_time;
+        double max_execution_time;
+    } analysis_result;
+
+    int analyze_algorithm(const benchmark_result results[], size_t result_count, SortAlgorithm algorithm, size_t array_size, DataDistribution distribution, SortOrder order, analysis_result *analysis);
+    int analyze_all_algorithms(const benchmark_result results[], size_t result_count, analysis_result analyses[], size_t analyses_capacity);
+    int compare_algorithms(const analysis_result analyses[], size_t analysis_count);
+#endif
