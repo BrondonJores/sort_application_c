@@ -22,7 +22,8 @@
         BENCHMARK_SUCCESS = 0,
         BENCHMARK_INVALID_ARGUMENT = -1,
         BENCHMARK_ALLOCATION_ERROR = -2,
-        BENCHMARK_SORT_ERROR = -3
+        BENCHMARK_SORT_ERROR = -3,
+        BENCHMARK_INTEGRITY_ERROR = -4
     }BenchmarkStatus;
 
     typedef struct 
@@ -36,5 +37,5 @@
 
     int benchmark_one(const table *t, SortAlgorithm algorithm, SortOrder order, sort_stats *stats);
 
-    int benchmark_all(const table *t, SortOrder order, benchmark_result results[], size_t results_capacity);
+    int benchmark_all(const table *t, SortOrder order, DataDistribution distribution, benchmark_result results[], size_t results_capacity);
 #endif
