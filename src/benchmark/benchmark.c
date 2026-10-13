@@ -21,7 +21,7 @@ static int dispatch_sort(table *t, SortAlgorithm algorithm, SortOrder order, sor
 }
 
 /* Fonctions benchmark publiques */
-int benchmark_one(const table *t, SortAlgorithm algorithm, SortOrder order, sort_stats *stats);
+int benchmark_one(const table *t, SortAlgorithm algorithm, SortOrder order, sort_stats *stats)
 {
     /* Corps de la fonction. */
 }
