@@ -3,6 +3,7 @@
 
 #ifndef SORTING_H
     #define SORTING_H
+    #include <stddef.h>
     #include "data.h"
 
     typedef enum 
@@ -13,8 +14,8 @@
 
     typedef struct 
     {
-        uint64_t comparaisons;
-        uint64_t swaps;
+        int comparaisons;
+        int swaps;
         double execution_time;
         size_t auxiliary_memory; 
     }sort_stats;
