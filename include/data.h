@@ -8,7 +8,7 @@
         size_t nombre_elements;
     }table;
 
-    typedef struct enum 
+    typedef enum
     {
         RANDOM,
         SORTED, 
