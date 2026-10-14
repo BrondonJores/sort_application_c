@@ -1,5 +1,5 @@
 /* include/data.h*/
-
+#include <stddef.h>
 #ifndef DATA_H
     #define DATA_H 
     typedef struct 
