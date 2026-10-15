@@ -1,4 +1,5 @@
 #include "benchmark.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -92,7 +93,6 @@ static table* copy_table(const table *source)
     return temp;
 }
 
-
 static int verify_integrity(const table *original, const table *sorted, SortOrder order)
 {
     if (original->nombre_elements != sorted->nombre_elements)
@@ -107,7 +107,6 @@ static int verify_integrity(const table *original, const table *sorted, SortOrde
     else 
         qsort(temp->elements, temp->nombre_elements, sizeof(double), compare_decroissant); 
     
-        
     for(size_t j=0; j<temp->nombre_elements; j++)
     {
         if(temp->elements[j] != sorted->elements[j])
@@ -130,21 +129,18 @@ static int is_sorted_correctly(const table *original, const table *sorted, SortO
     if (original->nombre_elements==0)
         return BENCHMARK_SUCCESS;
 
-    for (int i=0; i<original->nombre_elements-1; i++ )
+    for (size_t i=0; i<original->nombre_elements-1; i++ )
     {
-        
         if (order == ASCENDING)
         {
             if (sorted->elements[i] > sorted->elements[i+1])
                 return BENCHMARK_SORT_ERROR;
         }
-
         else 
         {
             if (sorted->elements[i] < sorted->elements[i+1])
                 return BENCHMARK_SORT_ERROR;
         }
-            
     }
     return BENCHMARK_SUCCESS;
 }
@@ -231,7 +227,6 @@ int benchmark_one(const table *t, SortAlgorithm algorithm, SortOrder order, sort
     free(sorted->elements);
     free(sorted);
     return code_sort;  
-    
 }
 
 int benchmark_all(const table *t, SortOrder order, DataDistribution distribution, benchmark_result results[], size_t results_capacity)
@@ -252,16 +247,17 @@ int benchmark_all(const table *t, SortOrder order, DataDistribution distribution
             free(copy_result);
             return benchmark_code;
         }else{
+            snprintf(copy_result[k].sample_id, sizeof(copy_result[k].sample_id), "E000");
             copy_result[k].algorithm = algorithms[k];
             copy_result[k].array_size = t->nombre_elements;
             copy_result[k].distribution = distribution;
             copy_result[k].order = order;
+            copy_result[k].repetition = 1;
         }
     }
     memcpy(results, copy_result, 6*sizeof(benchmark_result));
     free(copy_result);
     return BENCHMARK_SUCCESS;
-
 }
 
 int benchmark_multi_samples(const table *initial_table, SortOrder order, DataDistribution distribution, size_t sample_count, benchmark_result results[], size_t results_capacity)
@@ -299,6 +295,12 @@ int benchmark_multi_samples(const table *initial_table, SortOrder order, DataDis
         }
 
         int status = benchmark_all(&sample_table, order, distribution, &results[result_idx], results_capacity - result_idx);
+        for (size_t k = 0; k < 6; k++)
+        {
+            snprintf(results[result_idx + k].sample_id, sizeof(results[result_idx + k].sample_id), "S%03zu", s + 1);
+            results[result_idx + k].repetition = s + 1;
+        }
+
         free_table(&sample_table);
 
         if (status != BENCHMARK_SUCCESS)
@@ -306,6 +308,42 @@ int benchmark_multi_samples(const table *initial_table, SortOrder order, DataDis
 
         result_idx += 6;
     }
+
+    return BENCHMARK_SUCCESS;
+}
+
+int benchmark_sample_repetitions(const char *sample_id, const table *sample_data, SortOrder order, DataDistribution distribution, size_t repetitions, const SortAlgorithm algos[], size_t algo_count, benchmark_result results[], size_t results_capacity, size_t *results_written)
+{
+    if (sample_data == NULL || algos == NULL || results == NULL || repetitions == 0 || algo_count == 0)
+        return BENCHMARK_INVALID_ARGUMENT;
+
+    size_t needed = repetitions * algo_count;
+    if (results_capacity < needed)
+        return BENCHMARK_INVALID_ARGUMENT;
+
+    size_t idx = 0;
+    for (size_t r = 0; r < repetitions; r++)
+    {
+        for (size_t a = 0; a < algo_count; a++)
+        {
+            benchmark_result *res = &results[idx];
+            snprintf(res->sample_id, sizeof(res->sample_id), "%s", sample_id ? sample_id : "E000");
+            res->algorithm = algos[a];
+            res->array_size = sample_data->nombre_elements;
+            res->distribution = distribution;
+            res->order = order;
+            res->repetition = r + 1;
+
+            int code = benchmark_one(sample_data, algos[a], order, &res->stats);
+            if (code != BENCHMARK_SUCCESS)
+                return code;
+
+            idx++;
+        }
+    }
+
+    if (results_written)
+        *results_written = idx;
 
     return BENCHMARK_SUCCESS;
 }
