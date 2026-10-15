@@ -88,14 +88,16 @@ int export_benchmark_results(const char *filename, const benchmark_result result
           return FILE_MANAGER_OPEN_ERROR;
      }
     
-     fprintf(file, "Algorithm,Array Size,Distribution,Order,Comparisons,Swaps,Execution Time (s),Auxiliary Memory (bytes)\n");
+     fprintf(file, "Sample ID,Algorithm,Array Size,Distribution,Order,Repetition,Comparisons,Swaps,Execution Time (s),Auxiliary Memory (bytes)\n");
      for (size_t i = 0; i < result_count; i++) {
           const benchmark_result *result = &results[i];
-          fprintf(file, "%s,%zu,%s,%s,%d,%d,%f,%zu\n",
+          fprintf(file, "%s,%s,%zu,%s,%s,%zu,%d,%d,%f,%zu\n",
+                 result->sample_id[0] ? result->sample_id : "E000",
                  algorithm_to_string(result->algorithm),
                  result->array_size,
                  distribution_to_string(result->distribution),
                  order_to_string(result->order),
+                 result->repetition,
                  result->stats.comparaisons,
                  result->stats.swaps,
                  result->stats.execution_time,
