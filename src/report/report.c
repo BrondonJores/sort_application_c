@@ -3,94 +3,132 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Définitions de sécurité si les constantes ne sont pas explicites dans report.h */
-#ifndef REPORT_SUCCESS
-#define REPORT_SUCCESS 0
-#endif
-
-#ifndef REPORT_INVALID_ARGUMENT
-#define REPORT_INVALID_ARGUMENT -1
-#endif
-
-#ifndef REPORT_FILE_ERROR
-#define REPORT_FILE_ERROR -2
-#endif
-
-/* Fonctions internes */
-
-/**
- * @brief Valide les arguments transmis aux fonctions de génération de graphiques/données.
- */
-static int validate_plot_arguments(const analysis_result analyses[], size_t analysis_count, const char *filename)
+static const char *get_algo_name(SortAlgorithm algo)
 {
-    if (analyses == NULL || analysis_count == 0 || filename == NULL) {
-        return REPORT_INVALID_ARGUMENT;
+    switch (algo)
+    {
+        case BUBBLE:    return "Bubble";
+        case INSERTION: return "Insertion";
+        case SELECTION: return "Selection";
+        case MERGE:     return "Merge";
+        case QUICK:     return "Quick";
+        case HEAP:      return "Heap";
+        default:        return "Inconnu";
     }
-    return REPORT_SUCCESS;
 }
 
-/**
- * @brief Écrit les données d'analyse dans un fichier (CSV / dat) pour le traçage de la métrique spécifiée.
- */
-static int write_plot_data(const analysis_result analyses[], size_t analysis_count, const char *filename, const char *metric)
+static void ensure_dir_exists(const char *filepath)
 {
-    int validation = validate_plot_arguments(analyses, analysis_count, filename);
-    if (validation != REPORT_SUCCESS) {
-        return validation;
+    char tmp[512];
+    snprintf(tmp, sizeof(tmp), "%s", filepath);
+    char *last_slash = strrchr(tmp, '/');
+    if (last_slash)
+    {
+        *last_slash = '\0';
+        char cmd[550];
+        snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", tmp);
+        (void)system(cmd);
     }
+}
 
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) {
-        perror("Erreur d'ouverture du fichier de graphique");
-        return REPORT_FILE_ERROR;
-    }
+static int is_gnuplot_available(void)
+{
+    int ret = system("gnuplot --version > /dev/null 2>&1");
+    return (ret == 0);
+}
 
-    /* En-tête du fichier exporté */
-    fprintf(file, "# Algorithm,ArraySize,Value\n");
+static int generate_plot_full(const analysis_result analyses[], size_t analysis_count, const char *filename, const char *metric_type, const char *title, const char *ylabel)
+{
+    if (analyses == NULL || analysis_count == 0 || filename == NULL)
+        return REPORT_INVALID_ARGUMENT;
 
-    for (size_t i = 0; i < analysis_count; i++) {
-        double value = 0.0;
+    ensure_dir_exists(filename);
 
-        if (strcmp(metric, "execution_time") == 0) {
-            value = analyses[i].average_execution_time;
-        } else if (strcmp(metric, "comparisons") == 0) {
-            value = analyses[i].average_comparisons;
-        } else if (strcmp(metric, "auxiliary_memory") == 0) {
-            value = analyses[i].average_auxiliary_memory;
+    char dat_filename[512];
+    char gp_filename[512];
+
+    snprintf(dat_filename, sizeof(dat_filename), "%s.dat", filename);
+    snprintf(gp_filename, sizeof(gp_filename), "%s.gp", filename);
+
+    FILE *fdat = fopen(dat_filename, "w");
+    if (!fdat)
+        return REPORT_GENERATION_ERROR;
+
+    fprintf(fdat, "# Algorithm Average StdDev Min Max\n");
+
+    for (size_t i = 0; i < analysis_count; i++)
+    {
+        double avg = 0.0, stddev = 0.0, min_val = 0.0, max_val = 0.0;
+
+        if (strcmp(metric_type, "execution_time") == 0)
+        {
+            avg = analyses[i].average_execution_time;
+            stddev = analyses[i].stddev_execution_time;
+            min_val = analyses[i].min_execution_time;
+            max_val = analyses[i].max_execution_time;
+        }
+        else if (strcmp(metric_type, "comparisons") == 0)
+        {
+            avg = analyses[i].average_comparisons;
+            stddev = analyses[i].stddev_comparisons;
+            min_val = analyses[i].average_comparisons;
+            max_val = analyses[i].average_comparisons;
+        }
+        else if (strcmp(metric_type, "auxiliary_memory") == 0)
+        {
+            avg = analyses[i].average_auxiliary_memory;
+            stddev = analyses[i].stddev_auxiliary_memory;
+            min_val = analyses[i].average_auxiliary_memory;
+            max_val = analyses[i].average_auxiliary_memory;
         }
 
-        fprintf(file, "%d,%zu,%.6f\n",
-                (int)analyses[i].algorithm,
-                analyses[i].array_size,
-                value);
+        fprintf(fdat, "%s %.6f %.6f %.6f %.6f\n",
+                get_algo_name(analyses[i].algorithm),
+                avg, stddev, min_val, max_val);
+    }
+    fclose(fdat);
+
+    FILE *fgp = fopen(gp_filename, "w");
+    if (!fgp)
+        return REPORT_GENERATION_ERROR;
+
+    fprintf(fgp, "set terminal png size 800,600 font \"sans,10\"\n");
+    fprintf(fgp, "set output '%s'\n", filename);
+    fprintf(fgp, "set style fill solid 0.8\n");
+    fprintf(fgp, "set grid y\n");
+    fprintf(fgp, "set title \"%s\"\n", title);
+    fprintf(fgp, "set ylabel \"%s\"\n", ylabel);
+    fprintf(fgp, "set boxwidth 0.5\n");
+    fprintf(fgp, "set yrange [0:*]\n");
+    fprintf(fgp, "set xtics rotate by -30\n");
+    fprintf(fgp, "plot '%s' using 0:2:3:xtic(1) with boxerrorbars title 'Moyenne (+/- Ecart-type)'\n", dat_filename);
+    fclose(fgp);
+
+    if (!is_gnuplot_available())
+    {
+        return REPORT_GNUPLOT_NOT_FOUND;
     }
 
-    fclose(file);
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "gnuplot \"%s\"", gp_filename);
+    int res = system(cmd);
+    if (res != 0)
+        return REPORT_GENERATION_ERROR;
+
     return REPORT_SUCCESS;
 }
 
-/* Fonctions publiques */
-
-/**
- * @brief Génère le fichier de données pour le graphique du temps d'exécution.
- */
 int generate_execution_time_plot(const analysis_result analyses[], size_t analysis_count, const char *filename)
 {
-    return write_plot_data(analyses, analysis_count, filename, "execution_time");
+    return generate_plot_full(analyses, analysis_count, filename, "execution_time", "Temps d'execution moyen des algorithmes de tri", "Temps (s)");
 }
 
-/**
- * @brief Génère le fichier de données pour le graphique du nombre de comparaisons.
- */
 int generate_comparisons_plot(const analysis_result analyses[], size_t analysis_count, const char *filename)
 {
-    return write_plot_data(analyses, analysis_count, filename, "comparisons");
+    return generate_plot_full(analyses, analysis_count, filename, "comparisons", "Nombre moyen de comparaisons", "Comparaisons");
 }
 
-/**
- * @brief Génère le fichier de données pour le graphique de la mémoire auxiliaire.
- */
 int generate_auxiliary_memory_plot(const analysis_result analyses[], size_t analysis_count, const char *filename)
 {
-    return write_plot_data(analyses, analysis_count, filename, "auxiliary_memory");
+    return generate_plot_full(analyses, analysis_count, filename, "auxiliary_memory", "Memoire auxiliaire moyenne utilisee", "Memoire (octets)");
 }

@@ -14,6 +14,8 @@
 #include "report.h"
 
 #define NB_ALGORITHMES 6
+#define MAX_SAMPLES 100
+#define MAX_RESULTS (NB_ALGORITHMES * MAX_SAMPLES)
 #define TAILLE_CHEMIN 256
 
 #define RESET   "\033[0m"
@@ -28,7 +30,7 @@ typedef struct
     table donnees;
     int donnees_initialisees;
 
-    benchmark_result resultats[NB_ALGORITHMES];
+    benchmark_result resultats[MAX_RESULTS];
     size_t nombre_resultats;
     int benchmark_disponible;
 
@@ -134,8 +136,15 @@ void afficher_banniere(void)
     printf("  Generez, mesurez, analysez et comparez vos algorithmes.\n");
     afficher_separateur();
 
-    printf("  Donnees : %s\n",
-           app.donnees_initialisees ? "disponibles" : "non generees");
+    if (app.donnees_initialisees)
+    {
+        printf("  Donnees : %zu elements (%s)\n",
+               app.donnees.nombre_elements, nom_distribution(app.distribution));
+    }
+    else
+    {
+        printf("  Donnees : non generees\n");
+    }
     printf("  Benchmarks : %s\n",
            app.benchmark_disponible ? "disponibles" : "non executes");
     printf("  Analyses : %s\n",
@@ -272,26 +281,30 @@ static void afficher_menu_benchmark(void)
                 int ordre = lire_entier(
                     "Ordre (0 croissant, 1 decroissant) : ", 0, 1);
 
+                int samples = lire_entier(
+                    "Nombre d'echantillons (1 a 100, defaut 10) : ", 1, MAX_SAMPLES);
+
                 app.ordre = (SortOrder)ordre;
 
-                int statut = benchmark_all(
+                int statut = benchmark_multi_samples(
                     &app.donnees,
                     app.ordre,
                     app.distribution,
+                    (size_t)samples,
                     app.resultats,
-                    NB_ALGORITHMES
+                    MAX_RESULTS
                 );
 
                 if (statut == BENCHMARK_SUCCESS)
                 {
-                    app.nombre_resultats = NB_ALGORITHMES;
+                    app.nombre_resultats = NB_ALGORITHMES * samples;
                     app.benchmark_disponible = 1;
                     app.analyse_disponible = 0;
                     app.nombre_analyses = 0;
 
                     printf(GREEN
-                           "Benchmark termine avec succes.\n"
-                           RESET);
+                           "Benchmark termine avec succes (%d echantillon(s)).\n"
+                           RESET, samples);
 
                     afficher_resultats();
                 }
@@ -644,7 +657,8 @@ static void afficher_resultats(void)
         return;
     }
 
-    printf("\n%-12s %14s %14s %14s\n",
+    printf("\nOrdre : %s\n", nom_ordre(app.ordre));
+    printf("%-12s %14s %14s %14s\n",
            "Algorithme", "Temps (s)", "Comparaisons", "Swaps");
 
     afficher_separateur();
@@ -670,8 +684,8 @@ static void afficher_analyses(void)
         return;
     }
 
-    printf("\n%-12s %12s %14s %14s %14s\n",
-           "Algorithme", "Echantillons", "Temps moyen",
+    printf("\n%-12s %12s %14s %14s %14s %14s\n",
+           "Algorithme", "Echantillons", "Temps moyen", "Ecart-type (s)",
            "Comp. moyennes", "Swaps moyens");
 
     afficher_separateur();
@@ -680,10 +694,11 @@ static void afficher_analyses(void)
     {
         const analysis_result *a = &app.analyses[i];
 
-        printf("%-12s %12zu %14.6f %14.2f %14.2f\n",
+        printf("%-12s %12zu %14.6f %14.6f %14.2f %14.2f\n",
                nom_algorithme(a->algorithm),
                a->sample_count,
                a->average_execution_time,
+               a->stddev_execution_time,
                a->average_comparisons,
                a->average_swaps);
     }

@@ -264,3 +264,48 @@ int benchmark_all(const table *t, SortOrder order, DataDistribution distribution
 
 }
 
+int benchmark_multi_samples(const table *initial_table, SortOrder order, DataDistribution distribution, size_t sample_count, benchmark_result results[], size_t results_capacity)
+{
+    if (initial_table == NULL || results == NULL || sample_count == 0)
+        return BENCHMARK_INVALID_ARGUMENT;
+
+    if (results_capacity < 6 * sample_count)
+        return BENCHMARK_INVALID_ARGUMENT;
+
+    if (order != ASCENDING && order != DESCENDING)
+        return BENCHMARK_INVALID_ARGUMENT;
+
+    if (distribution != RANDOM && distribution != SORTED && distribution != REVERSE_SORTED && distribution != NEARLY_SORTED && distribution != DUPLICATES)
+        return BENCHMARK_INVALID_ARGUMENT;
+
+    size_t n = initial_table->nombre_elements;
+    size_t result_idx = 0;
+
+    for (size_t s = 0; s < sample_count; s++)
+    {
+        table sample_table;
+        if (s == 0)
+        {
+            table *copy = copy_table(initial_table);
+            if (copy == NULL)
+                return BENCHMARK_ALLOCATION_ERROR;
+            sample_table = *copy;
+            free(copy);
+        }
+        else
+        {
+            if (generate_table(&sample_table, n, distribution) != 0)
+                return BENCHMARK_ALLOCATION_ERROR;
+        }
+
+        int status = benchmark_all(&sample_table, order, distribution, &results[result_idx], results_capacity - result_idx);
+        free_table(&sample_table);
+
+        if (status != BENCHMARK_SUCCESS)
+            return status;
+
+        result_idx += 6;
+    }
+
+    return BENCHMARK_SUCCESS;
+}
