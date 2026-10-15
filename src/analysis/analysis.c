@@ -1,4 +1,5 @@
 #include "analysis.h"
+#include <math.h>
 
 /* Fonctions internes */
 static int same_experiment_context(const benchmark_result *a, const benchmark_result *b)
@@ -117,6 +118,37 @@ int analyze_algorithm(const benchmark_result results[], size_t result_count, Sor
 
     temp.min_execution_time = min_time;
     temp.max_execution_time = max_time;
+
+    double var_time = 0.0;
+    double var_comparisons = 0.0;
+    double var_swaps = 0.0;
+    double var_memory = 0.0;
+
+    for (size_t i = 0; i < result_count; i++)
+    {
+        if (results[i].algorithm != algorithm ||
+            results[i].array_size != array_size ||
+            results[i].distribution != distribution ||
+            results[i].order != order)
+        {
+            continue;
+        }
+
+        double diff_time = results[i].stats.execution_time - temp.average_execution_time;
+        double diff_comp = (double)results[i].stats.comparaisons - temp.average_comparisons;
+        double diff_swap = (double)results[i].stats.swaps - temp.average_swaps;
+        double diff_mem = (double)results[i].stats.auxiliary_memory - temp.average_auxiliary_memory;
+
+        var_time += diff_time * diff_time;
+        var_comparisons += diff_comp * diff_comp;
+        var_swaps += diff_swap * diff_swap;
+        var_memory += diff_mem * diff_mem;
+    }
+
+    temp.stddev_execution_time = sqrt(var_time / sample_count);
+    temp.stddev_comparisons = sqrt(var_comparisons / sample_count);
+    temp.stddev_swaps = sqrt(var_swaps / sample_count);
+    temp.stddev_auxiliary_memory = sqrt(var_memory / sample_count);
 
     *analysis = temp;
 

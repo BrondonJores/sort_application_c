@@ -18,6 +18,10 @@
         double average_auxiliary_memory;
         double min_execution_time;
         double max_execution_time;
+        double stddev_execution_time;
+        double stddev_comparisons;
+        double stddev_swaps;
+        double stddev_auxiliary_memory;
     } analysis_result;
 
     typedef enum

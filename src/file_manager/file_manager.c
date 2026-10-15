@@ -114,19 +114,23 @@ int export_analysis_results(const char *filename, const analysis_result analyses
              return FILE_MANAGER_OPEN_ERROR;
       }
      
-      fprintf(file, "Algorithm,Array Size,Distribution,Order,Sample Count,Average Execution Time (s),Average Comparisons,Average Swaps,Average Auxiliary Memory (bytes),Min Execution Time (s),Max Execution Time (s)\n");
+      fprintf(file, "Algorithm,Array Size,Distribution,Order,Sample Count,Average Execution Time (s),StdDev Execution Time (s),Average Comparisons,StdDev Comparisons,Average Swaps,StdDev Swaps,Average Auxiliary Memory (bytes),StdDev Auxiliary Memory (bytes),Min Execution Time (s),Max Execution Time (s)\n");
       for (size_t i = 0; i < analysis_count; i++) {
              const analysis_result *result = &analyses[i];
-             fprintf(file, "%s,%zu,%s,%s,%zu,%f,%f,%f,%f,%f,%f\n",
+             fprintf(file, "%s,%zu,%s,%s,%zu,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
                   algorithm_to_string(result->algorithm),
                   result->array_size,
                   distribution_to_string(result->distribution),
                   order_to_string(result->order),
                   result->sample_count,
                   result->average_execution_time,
+                  result->stddev_execution_time,
                   result->average_comparisons,
+                  result->stddev_comparisons,
                   result->average_swaps,
+                  result->stddev_swaps,
                   result->average_auxiliary_memory,
+                  result->stddev_auxiliary_memory,
                   result->min_execution_time,
                   result->max_execution_time);
       }

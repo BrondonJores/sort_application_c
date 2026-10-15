@@ -38,4 +38,6 @@
     int benchmark_one(const table *t, SortAlgorithm algorithm, SortOrder order, sort_stats *stats);
 
     int benchmark_all(const table *t, SortOrder order, DataDistribution distribution, benchmark_result results[], size_t results_capacity);
+
+    int benchmark_multi_samples(const table *initial_table, SortOrder order, DataDistribution distribution, size_t sample_count, benchmark_result results[], size_t results_capacity);
 #endif

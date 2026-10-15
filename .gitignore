@@ -1,0 +1,7 @@
+build/
+sorting_benchmark
+test_runner
+output/
+test_gnuplot/
+*.o
+*.d
